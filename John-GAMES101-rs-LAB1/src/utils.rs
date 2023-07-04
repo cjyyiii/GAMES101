@@ -1,5 +1,5 @@
 use std::os::raw::c_void;
-use nalgebra::{Matrix4, Vector3};
+use nalgebra::{Matrix4, Vector3, Matrix3};
 use opencv::core::{Mat, MatTraitConst};
 use opencv::imgproc::{COLOR_RGB2BGR, cvt_color};
 
@@ -60,23 +60,23 @@ pub(crate) fn get_projection_matrix(eye_fov: f64, aspect_ratio: f64, z_near: f64
     ortho * projection
 }
 
-// pub(crate) fn get_rotation(axis: V3d, angle: f64) -> Matrix4<f64> {
-//     let radian = angle * std::f64::consts::PI / 180.0;
-//     let mul: Matrix3<f64> = Matrix3::new(
-//         0.0, -axis[2], axis[1],
-//         axis[2], 0.0, -axis[0],
-//         -axis[1], axis[0], 0.0,
-//     );
-//     let temp: Matrix3<f64> = Matrix3::identity();
-//     let _temp: Matrix3<f64> = radian.cos() * temp + (1.0 - radian.cos()) * axis * axis.adjoint() + radian.sin() * mul;
-//     let model: Matrix4<f64> = Matrix4::new(
-//         _temp.m11, _temp.m12, _temp.m13, 0.0,
-//         _temp.m21, _temp.m22, _temp.m23, 0.0,
-//         _temp.m31, _temp.m32, _temp.m33, 0.0,
-//         0.0, 0.0, 0.0, 1.0,
-//     );
-//     model
-// }
+pub(crate) fn get_rotation(axis: V3d, angle: f64) -> Matrix4<f64> {
+    let radian = angle * std::f64::consts::PI / 180.0;
+    let mul: Matrix3<f64> = Matrix3::new(
+        0.0, -axis[2], axis[1],
+        axis[2], 0.0, -axis[0],
+        -axis[1], axis[0], 0.0,
+    );
+    let temp: Matrix3<f64> = Matrix3::identity();
+    let _temp: Matrix3<f64> = radian.cos() * temp + (1.0 - radian.cos()) * axis * axis.adjoint() + radian.sin() * mul;
+    let model: Matrix4<f64> = Matrix4::new(
+        _temp.m11, _temp.m12, _temp.m13, 0.0,
+        _temp.m21, _temp.m22, _temp.m23, 0.0,
+        _temp.m31, _temp.m32, _temp.m33, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    );
+    model
+}
 
 pub(crate) fn frame_buffer2cv_mat(frame_buffer: &Vec<V3d>) -> opencv::core::Mat {
     let mut image = unsafe {

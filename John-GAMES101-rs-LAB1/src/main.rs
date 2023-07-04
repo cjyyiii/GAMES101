@@ -9,6 +9,7 @@ use opencv::highgui::{imshow, wait_key};
 use opencv::imgcodecs::imwrite;
 use crate::rasterizer::{Primitive, Rasterizer};
 use utils::*;
+use std::io;
 
 fn main() {
     let mut angle = 0.0;
@@ -29,9 +30,25 @@ fn main() {
                    Vector3::new(0.0, 2.0, -2.0),
                    Vector3::new(-2.0, 0.0, -2.0)];
     let ind = vec![Vector3::new(0, 1, 2)];
-
+    
     let pos_id = r.load_position(&pos);
     let ind_id = r.load_indices(&ind);
+    
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+    let coordinates: Vec<f64> = input.split_whitespace().map(|x| x.parse::<f64>().unwrap()).collect();
+    let axis = Vector3::new(coordinates[0], coordinates[1], coordinates[2]);
+    
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+    let angle1: f64 = match input.trim().parse() {
+        Ok(angle1) => angle1,
+        Err(_) => {
+            println!("Failed to read angle");
+            return;
+        },
+    };
+    
 
     let mut k = 0;
     let mut frame_count = 0;
@@ -61,6 +78,10 @@ fn main() {
 
         k = wait_key(80).unwrap();
         println!("frame count: {}", frame_count);
+        if k == 'r' as i32 {
+            r.set_arbitrary_rotation(get_rotation(axis, angle1));
+            r.set_model(get_model_matrix(angle));
+        }
         if k == 'a' as i32 {
             angle += 10.0;
         } else if k == 'd' as i32 {
@@ -69,3 +90,18 @@ fn main() {
         frame_count += 1;
     }
 }
+
+// fn get_axis() -> Vector3<f64> {
+//     let mut input = String::new();
+//     io::stdin().read_line(&mut input).unwrap();
+//     let coordinates: Vec<f64> = input.split_whitespace().map(|x| x.parse::<f64>().unwrap()).collect();
+//     let axis = Vector3::new(coordinates[0], coordinates[1], coordinates[2]);
+//     axis
+// }
+
+// fn get_angle() -> f64 {
+//     let mut input = String::new();
+//     io::stdin().read_line(&mut input).unwrap();
+//     let angle: f64 = input.trim().parse();
+//     angle
+// }
