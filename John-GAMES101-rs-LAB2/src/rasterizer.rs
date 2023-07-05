@@ -176,17 +176,26 @@ impl Rasterizer {
         let maxx: usize = max_x.ceil() as usize;
         let maxy: usize = max_y.ceil() as usize;
         
+        //MSAA
         for x in minx..maxx {
             for y in miny..maxy {
-                if inside_triangle(x as f64 + 0.5, y as f64 + 0.5, &t.v) {//像素中心在三角形内
+                let mut degree: f64 = 0.0;
+                if inside_triangle(x as f64 + 0.25, y as f64 + 0.25, &t.v) { degree += 0.25; }//将一个像素点分为四个
+                if inside_triangle(x as f64 + 0.25, y as f64 + 0.75, &t.v) { degree += 0.25; }
+                if inside_triangle(x as f64 + 0.75, y as f64 + 0.25, &t.v) { degree += 0.25; }
+                if inside_triangle(x as f64 + 0.75, y as f64 + 0.75, &t.v) { degree += 0.25; }
+                let index = self.get_index(x, y);
+                if degree != 0.0 {
                     let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.5, y as f64 + 0.5, &t.v);
-                    let _z = 1.0 / (alpha / v[0].w + beta / v[1].w + gamma / v[2].w); 
-                    let z_interpolated = (alpha * v[0].z / v[0].w + beta * v[1].z / v[1].w + gamma * v[2].z / v[2].w) * _z;//计算插值深度
-                    let index = self.get_index(x, y);
+                    let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
+                    
                     if z_interpolated < self.depth_buf[index] {//与deep_buffer比较
                         let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
                         self.depth_buf[index] = z_interpolated;
-                        self.set_pixel(&pixel, &t.get_color());
+                        self.set_pixel(&pixel, &(t.get_color() * degree + (1.0 - degree) * self.frame_buf[index]));
+                        if degree < 1.0 {
+                            self.depth_buf[index] = std::f64::INFINITY;
+                        }
                     }
                 }
             }

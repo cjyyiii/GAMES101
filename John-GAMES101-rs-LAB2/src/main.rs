@@ -4,6 +4,7 @@ mod utils;
 
 extern crate opencv;
 
+use std::time::Instant;
 use nalgebra::{Vector3};
 use opencv::{
     Result,
@@ -41,6 +42,7 @@ fn main() -> Result<()> {
     let mut frame_count = 0;
 
     while k != 27 {
+        let now = Instant::now();
         r.clear(rasterizer::Buffer::Both);
         r.set_model(get_model_matrix(0.0));
         r.set_view(get_view_matrix(eye_pos));
@@ -54,6 +56,8 @@ fn main() -> Result<()> {
         k = wait_key(2000).unwrap();
         println!("frame count: {}", frame_count);
         frame_count += 1;
+        let end = now.elapsed().as_secs_f64();
+        println!("单次渲染用时{}秒", end);
     }
 
     Ok(())
