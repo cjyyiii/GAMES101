@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use nalgebra::{Matrix4, Vector3, Vector4};
+use nalgebra::{Matrix4, Vector3, Vector4, Vector2};
 use crate::triangle::Triangle;
 
 #[allow(dead_code)]
@@ -158,7 +158,39 @@ impl Rasterizer {
 
     pub fn rasterize_triangle(&mut self, t: &Triangle) {
         /*  implement your code here  */
+        let v = t.to_vector4();
+        let mut min_x: f64 = self.width as f64;
+        let mut min_y: f64 = self.height as f64;
+        let mut max_x: f64 = 0.0;
+        let mut max_y: f64 = 0.0;
+
+        for i in 0..3 {
+            min_x = min_x.min(v[i].x);
+            min_y = min_y.min(v[i].y);
+            max_x = max_x.max(v[i].x);
+            max_y = max_y.max(v[i].y);
+        }
+        //bounding box
+        let minx: usize = min_x.floor() as usize;
+        let miny: usize = min_y.floor() as usize;        
+        let maxx: usize = max_x.ceil() as usize;
+        let maxy: usize = max_y.ceil() as usize;
         
+        for x in minx..maxx {
+            for y in miny..maxy {
+                if inside_triangle(x as f64 + 0.5, y as f64 + 0.5, &t.v) {//像素中心在三角形内
+                    let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.5, y as f64 + 0.5, &t.v);
+                    let _z = 1.0 / (alpha / v[0].w + beta / v[1].w + gamma / v[2].w); 
+                    let z_interpolated = (alpha * v[0].z / v[0].w + beta * v[1].z / v[1].w + gamma * v[2].z / v[2].w) * _z;//计算插值深度
+                    let index = self.get_index(x, y);
+                    if z_interpolated < self.depth_buf[index] {//与deep_buffer比较
+                        let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
+                        self.depth_buf[index] = z_interpolated;
+                        self.set_pixel(&pixel, &t.get_color());
+                    }
+                }
+            }
+        }
     }
 
     pub fn frame_buffer(&self) -> &Vec<Vector3<f64>> {
@@ -172,7 +204,21 @@ fn to_vec4(v3: Vector3<f64>, w: Option<f64>) -> Vector4<f64> {
 
 fn inside_triangle(x: f64, y: f64, v: &[Vector3<f64>; 3]) -> bool {
     /*  implement your code here  */
+    let side1: Vector2<f64> = Vector2::<f64>::new(v[1].x - v[0].x, v[1].y - v[0].y);
+    let side2: Vector2<f64> = Vector2::<f64>::new(v[2].x - v[1].x, v[2].y - v[1].y);
+    let side3: Vector2<f64> = Vector2::<f64>::new(v[0].x - v[2].x, v[0].y - v[2].y);
 
+    let v1: Vector2<f64> = Vector2::<f64>::new(x - v[0].x, y - v[0].y);
+    let v2: Vector2<f64> = Vector2::<f64>::new(x - v[1].x, y - v[1].y);
+    let v3: Vector2<f64> = Vector2::<f64>::new(x - v[2].x, y - v[2].y);
+    
+    let z1: f64 = side1.x * v1.y - side1.y * v1.x;//叉乘
+    let z2: f64 = side2.x * v2.y - side2.y * v2.x;
+    let z3: f64 = side3.x * v3.y - side3.y * v3.x;
+    
+    if (z1 >= 0.0 && z2 >= 0.0 && z3 >= 0.0) || (z1 <= 0.0 && z2 <= 0.0 && z3 <= 0.0) {
+        return true;
+    }
     false
 }
 
