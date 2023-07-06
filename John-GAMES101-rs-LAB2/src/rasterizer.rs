@@ -258,19 +258,19 @@ impl Rasterizer {
 
         //锯齿
         // for x in minx..maxx {
-            // for y in miny..maxy {
-                // if inside_triangle(x as f64 + 0.5, y as f64 + 0.5, &t.v) { 
-                // let index = self.get_index(x, y);
-                    // let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.5, y as f64 + 0.5, &t.v);
-                    // let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
-                    // 
-                    // if z_interpolated < self.depth_buf[index] {//与deep_buffer比较
-                        // let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
-                        // self.depth_buf[index] = z_interpolated;
-                        // self.set_pixel(&pixel, &t.get_color());
-                    // }
-                // }
-            // }
+        //     for y in miny..maxy {
+        //         if inside_triangle(x as f64 + 0.5, y as f64 + 0.5, &t.v) { 
+        //         let index = self.get_index(x, y);
+        //             let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.5, y as f64 + 0.5, &t.v);
+        //             let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
+                    
+        //             if z_interpolated < self.depth_buf[index] {//与deep_buffer比较
+        //                 let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
+        //                 self.depth_buf[index] = z_interpolated;
+        //                 self.set_pixel(&pixel, &t.get_color());
+        //             }
+        //         }
+        //     }
         // }
 
         //FXAA
