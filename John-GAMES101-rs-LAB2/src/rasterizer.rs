@@ -27,9 +27,11 @@ pub struct Rasterizer {
 
     frame_buf: Vec<Vector3<f64>>,
     depth_buf: Vec<f64>,
+    color_buf: Vec<Vector3<f64>>,
     /*  You may need to uncomment here to implement the MSAA method  */
-    frame_sample: Vec<Vector3<f64>>,
-    depth_sample: Vec<f64>,
+    // frame_sample: Vec<Vector3<f64>>,
+    // depth_sample: Vec<f64>,
+
     width: u64,
     height: u64,
     next_id: usize,
@@ -50,9 +52,10 @@ impl Rasterizer {
         r.width = w;
         r.height = h;
         r.frame_buf.resize((w * h) as usize, Vector3::zeros());
+        r.color_buf.resize((w * h) as usize, Vector3::zeros());
         r.depth_buf.resize((w * h) as usize, 0.0);
-        r.frame_sample.resize((w * h * 4) as usize, Vector3::zeros());
-        r.depth_sample.resize((w * h * 4) as usize, 0.0);
+        // r.frame_sample.resize((w * h * 4) as usize, Vector3::zeros());
+        // r.depth_sample.resize((w * h * 4) as usize, 0.0);
         r
     }
 
@@ -65,21 +68,29 @@ impl Rasterizer {
         self.frame_buf[ind as usize] = *color;
     }
 
+    fn set_col(&mut self, x: f64, y: f64, color: &Vector3<f64>) {
+        // let ind = (self.height as f64 - 1.0 - point.y) * self.width as f64 + point.x;
+        let ind = self.get_index(x as usize, y as usize);
+        self.color_buf[ind as usize] = *color;
+    }
+
     pub fn clear(&mut self, buff: Buffer) {
         match buff {
             Buffer::Color => {
                 self.frame_buf.fill(Vector3::new(0.0, 0.0, 0.0));
-                self.frame_sample.fill(Vector3::new(0.0, 0.0, 0.0));
+                self.color_buf.fill(Vector3::new(0.0, 0.0, 0.0));
+                // self.frame_sample.fill(Vector3::new(0.0, 0.0, 0.0));
             }
             Buffer::Depth => {
                 self.depth_buf.fill(f64::MAX);
-                self.depth_sample.fill(f64::MAX);
+                // self.depth_sample.fill(f64::MAX);
             }
             Buffer::Both => {
                 self.frame_buf.fill(Vector3::new(0.0, 0.0, 0.0));
-                self.frame_sample.fill(Vector3::new(0.0, 0.0, 0.0));
+                self.color_buf.fill(Vector3::new(0.0, 0.0, 0.0));
+                // self.frame_sample.fill(Vector3::new(0.0, 0.0, 0.0));
                 self.depth_buf.fill(f64::MAX);
-                self.depth_sample.fill(f64::MAX);
+                // self.depth_sample.fill(f64::MAX);
             }
         }
     }
@@ -208,84 +219,114 @@ impl Rasterizer {
         // }
 
         //MSAA2
+        // for x in minx..maxx {
+        //     for y in miny..maxy {
+        //         // let mut degree: f64 = 0.0;
+        //         let index = self.get_index(x, y);
+        //         if inside_triangle(x as f64 + 0.25, y as f64 + 0.25, &t.v) { 
+        //             // degree += 0.25; 
+        //             let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.25, y as f64 + 0.25, &t.v);
+        //             let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
+        //             if z_interpolated < self.depth_sample[index * 4] {
+        //                 self.depth_sample[index * 4] = z_interpolated;
+        //                 self.frame_sample[index * 4] = t.get_color() / 4.0;
+        //                 self.depth_buf[index] = self.depth_buf[index].min(z_interpolated);
+        //             }
+        //         }//将一个像素点分为四个
+        //         if inside_triangle(x as f64 + 0.25, y as f64 + 0.75, &t.v) { 
+        //             // degree += 0.25; 
+        //             let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.25, y as f64 + 0.75, &t.v);
+        //             let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
+        //             if z_interpolated < self.depth_sample[index * 4 + 1] {
+        //                 self.depth_sample[index * 4 + 1] = z_interpolated;
+        //                 self.frame_sample[index * 4 + 1] = t.get_color() / 4.0;
+        //                 self.depth_buf[index] = self.depth_buf[index].min(z_interpolated);
+        //             }
+        //         }
+        //         if inside_triangle(x as f64 + 0.75, y as f64 + 0.25, &t.v) { 
+        //             // degree += 0.25; 
+        //             let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.75, y as f64 + 0.25, &t.v);
+        //             let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
+        //             if z_interpolated < self.depth_sample[index * 4 + 2] {
+        //                 self.depth_sample[index * 4 + 2] = z_interpolated;
+        //                 self.frame_sample[index * 4 + 2] = t.get_color() / 4.0;
+        //                 self.depth_buf[index] = self.depth_buf[index].min(z_interpolated);
+        //             }
+        //         }
+        //         if inside_triangle(x as f64 + 0.75, y as f64 + 0.75, &t.v) { 
+        //             // degree += 0.25; 
+        //             let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.75, y as f64 + 0.75, &t.v);
+        //             let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
+        //             if z_interpolated < self.depth_sample[index * 4 + 3] {
+        //                 self.depth_sample[index * 4 + 3] = z_interpolated;
+        //                 self.frame_sample[index * 4 + 3] = t.get_color() / 4.0;
+        //                 self.depth_buf[index] = self.depth_buf[index].min(z_interpolated);
+        //             }
+        //         }
+        //         self.set_pixel(&Vector3::new(x as f64, y as f64, self.depth_buf[index]), &(self.frame_sample[index * 4] + self.frame_sample[index * 4 + 1] + self.frame_sample[index * 4 + 2] + self.frame_sample[index * 4 + 3]));
+        //     }
+        // }
+
+        
         for x in minx..maxx {
             for y in miny..maxy {
-                // let mut degree: f64 = 0.0;
+                if inside_triangle(x as f64 + 0.5, y as f64 + 0.5, &t.v) { 
                 let index = self.get_index(x, y);
-                if inside_triangle(x as f64 + 0.25, y as f64 + 0.25, &t.v) { 
-                    // degree += 0.25; 
-                    let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.25, y as f64 + 0.25, &t.v);
+                    let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.5, y as f64 + 0.5, &t.v);
                     let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
-                    if z_interpolated < self.depth_sample[index * 4] {
-                        self.depth_sample[index * 4] = z_interpolated;
-                        self.frame_sample[index * 4] = t.get_color() / 4.0;
-                        self.depth_buf[index] = self.depth_buf[index].min(z_interpolated);
-                    }
-                }//将一个像素点分为四个
-                if inside_triangle(x as f64 + 0.25, y as f64 + 0.75, &t.v) { 
-                    // degree += 0.25; 
-                    let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.25, y as f64 + 0.75, &t.v);
-                    let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
-                    if z_interpolated < self.depth_sample[index * 4 + 1] {
-                        self.depth_sample[index * 4 + 1] = z_interpolated;
-                        self.frame_sample[index * 4 + 1] = t.get_color() / 4.0;
-                        self.depth_buf[index] = self.depth_buf[index].min(z_interpolated);
+                    
+                    if z_interpolated < self.depth_buf[index] {//与deep_buffer比较
+                        // let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
+                        self.depth_buf[index] = z_interpolated;
+                        self.set_col(x as f64, y as f64, &t.get_color());
+
                     }
                 }
-                if inside_triangle(x as f64 + 0.75, y as f64 + 0.25, &t.v) { 
-                    // degree += 0.25; 
-                    let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.75, y as f64 + 0.25, &t.v);
-                    let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
-                    if z_interpolated < self.depth_sample[index * 4 + 2] {
-                        self.depth_sample[index * 4 + 2] = z_interpolated;
-                        self.frame_sample[index * 4 + 2] = t.get_color() / 4.0;
-                        self.depth_buf[index] = self.depth_buf[index].min(z_interpolated);
-                    }
-                }
-                if inside_triangle(x as f64 + 0.75, y as f64 + 0.75, &t.v) { 
-                    // degree += 0.25; 
-                    let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.75, y as f64 + 0.75, &t.v);
-                    let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
-                    if z_interpolated < self.depth_sample[index * 4 + 3] {
-                        self.depth_sample[index * 4 + 3] = z_interpolated;
-                        self.frame_sample[index * 4 + 3] = t.get_color() / 4.0;
-                        self.depth_buf[index] = self.depth_buf[index].min(z_interpolated);
-                    }
-                }
-                self.set_pixel(&Vector3::new(x as f64, y as f64, self.depth_buf[index]), &(self.frame_sample[index * 4] + self.frame_sample[index * 4 + 1] + self.frame_sample[index * 4 + 2] + self.frame_sample[index * 4 + 3]));
             }
         }
 
-        //锯齿
-        // for x in minx..maxx {
-        //     for y in miny..maxy {
-        //         if inside_triangle(x as f64 + 0.5, y as f64 + 0.5, &t.v) { 
-        //         let index = self.get_index(x, y);
-        //             let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.5, y as f64 + 0.5, &t.v);
-        //             let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
-                    
-        //             if z_interpolated < self.depth_buf[index] {//与deep_buffer比较
-        //                 let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
-        //                 self.depth_buf[index] = z_interpolated;
-        //                 self.set_pixel(&pixel, &t.get_color());
-        //             }
-        //         }
-        //     }
-        // }
-
-        //FXAA
-        // for x in minx..maxx {
-        //     for y in miny..maxy {         
-        //     }
-            
-        // }
+        for x in minx..maxx {
+            for y in miny..maxy {
+                let index_m = self.get_index(x, y);
+                let index_w = self.get_index(x - 1, y);
+                let index_n = self.get_index(x, y + 1);
+                let index_e = self.get_index(x + 1, y);
+                let index_s = self.get_index(x, y - 1);
+                let index_nw = self.get_index(x - 1, y + 1);
+                let index_sw = self.get_index(x - 1, y - 1);
+                let index_ne = self.get_index(x + 1, y + 1);
+                let index_se =  self.get_index(x + 1, y - 1);
+                let m = self.color_buf[index_m];
+                let w = self.color_buf[index_w];
+                let n = self.color_buf[index_n];
+                let e = self.color_buf[index_e];
+                let s = self.color_buf[index_s];
+                let nw = self.color_buf[index_nw];
+                let sw = self.color_buf[index_sw];
+                let ne = self.color_buf[index_ne];
+                let se = self.color_buf[index_se];
+                let color = 1.0 / 5.0 * m + 2.0 / 15.0 * (w + n + e + s) + 1.0 / 15.0 * (nw + sw + ne + se);
+                self.set_pixel(&Vector3::new(x as f64, y as f64, 0.0), &color);
+            }
+        }
 
     }
 
     pub fn frame_buffer(&self) -> &Vec<Vector3<f64>> {
         &self.frame_buf
     }
+
 }
+
+// fn clamp(x: f64, min: f64, max: f64) -> f64 {
+//     if x < min {
+//         return min;
+//     }
+//     if x > max {
+//         return max;
+//     }
+//     x
+// }
 
 fn to_vec4(v3: Vector3<f64>, w: Option<f64>) -> Vector4<f64> {
     Vector4::new(v3.x, v3.y, v3.z, w.unwrap_or(1.0))
