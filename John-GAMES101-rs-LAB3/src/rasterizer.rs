@@ -4,6 +4,7 @@ use nalgebra::{Matrix4, Vector2, Vector3, Vector4};
 use crate::shader::{FragmentShaderPayload, VertexShaderPayload};
 use crate::texture::Texture;
 use crate::triangle::Triangle;
+use crate::utils::normal_fragment_shader;
 
 #[allow(dead_code)]
 pub enum Buffer {
@@ -109,14 +110,69 @@ impl Rasterizer {
 
     pub fn rasterize_triangle(&mut self, triangle: &Triangle, mvp: Matrix4<f64>) {
         /*  Implement your code here  */
+        let (t, view_pos) = Rasterizer::get_new_tri(&triangle, self.view, self.model, mvp, (self.width, self.height));
+        let v = t.to_vector4();
+        let mut min_x: f64 = self.width as f64;
+        let mut min_y: f64 = self.height as f64;
+        let mut max_x: f64 = 0.0;
+        let mut max_y: f64 = 0.0;
 
+        for i in 0..3 {
+            min_x = min_x.min(v[i].x);
+            min_y = min_y.min(v[i].y);
+            max_x = max_x.max(v[i].x);
+            max_y = max_y.max(v[i].y);
+        }
+        //bounding box
+        let minx: usize = min_x.floor() as usize;
+        let miny: usize = min_y.floor() as usize;        
+        let maxx: usize = max_x.ceil() as usize;
+        let maxy: usize = max_y.ceil() as usize;
+
+        for x in minx..maxx {
+            for y in miny..maxy {
+                if inside_triangle(x as f64 + 0.5, y as f64 + 0.5, &t.v) { 
+                    let index = Self::get_index(self.height, self.width, x, y);
+                    let (alpha, beta, gamma) = compute_barycentric2d(x as f64 + 0.5, y as f64 + 0.5, &t.v);
+                    let z_interpolated = (alpha * v[0].z + beta * v[1].z + gamma * v[2].z) / (alpha + beta + gamma);//计算插值深度
+                    
+                    if z_interpolated < self.depth_buf[index] {//与deep_buffer比较
+                        let interpolate_color = Self::interpolate_vec3(alpha, beta, gamma, t.color[0], t.color[1], t.color[2], 1.0);//颜色插值
+                        let interpolate_normal = Self::interpolate_vec3(alpha, beta, gamma, t.normal[0], t.normal[1], t.normal[2], 1.0);//法向量插值
+                        let interpolate_texcoords = Self::interpolate_vec2(alpha, beta, gamma, t.tex_coords[0], t.tex_coords[1], t.tex_coords[2], 1.0);//纹理颜色插值
+                        let interpolate_shadingcoords = Self::interpolate_vec3(alpha, beta, gamma, view_pos[0], view_pos[1], view_pos[2], 1.0);//内部点位置插值
+
+                        if let  Some(tex) = &self.texture {
+                        let mut payload: FragmentShaderPayload = FragmentShaderPayload::new(&interpolate_color, &interpolate_normal.normalize(), &interpolate_texcoords, Some(Rc::new(&tex)) );
+                        payload.view_pos = interpolate_shadingcoords;
+
+                        let pixel_color = normal_fragment_shader(&payload);
+                        let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
+                        self.depth_buf[index] = z_interpolated;
+                        Rasterizer::set_pixel(self.height, self.width, &mut self.frame_buf, &pixel, &pixel_color);
+                        } else {
+                            let mut payload: FragmentShaderPayload = FragmentShaderPayload::new(&interpolate_color, &interpolate_normal.normalize(), &interpolate_texcoords, None );
+                            payload.view_pos = interpolate_shadingcoords;
+    
+                            let pixel_color = normal_fragment_shader(&payload);
+                            let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
+                            self.depth_buf[index] = z_interpolated;
+                            Rasterizer::set_pixel(self.height, self.width, &mut self.frame_buf, &pixel, &pixel_color);
+                        };
+
+                    }
+                }
+            }
+        }
+
+       
 
     }
     
-    fn interpolate_Vec3(a: f64, b: f64, c: f64, vert1: Vector3<f64>, vert2: Vector3<f64>, vert3: Vector3<f64>, weight: f64) -> Vector3<f64> {
+    fn interpolate_vec3(a: f64, b: f64, c: f64, vert1: Vector3<f64>, vert2: Vector3<f64>, vert3: Vector3<f64>, weight: f64) -> Vector3<f64> {
         (a * vert1 + b * vert2 + c * vert3) / weight
     }
-    fn interpolate_Vec2(a: f64, b: f64, c: f64, vert1: Vector2<f64>, vert2: Vector2<f64>, vert3: Vector2<f64>, weight: f64) -> Vector2<f64> {
+    fn interpolate_vec2(a: f64, b: f64, c: f64, vert1: Vector2<f64>, vert2: Vector2<f64>, vert3: Vector2<f64>, weight: f64) -> Vector2<f64> {
         (a * vert1 + b * vert2 + c * vert3) / weight
     }
 

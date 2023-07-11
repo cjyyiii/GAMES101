@@ -1,5 +1,7 @@
 use std::os::raw::c_void;
-use nalgebra::{Matrix3, Matrix4, Vector3, Vector4};
+use nalgebra::{
+    // Matrix3,
+    Matrix4, Vector3, Vector4};
 use opencv::core::{Mat, MatTraitConst};
 use opencv::imgproc::{COLOR_RGB2BGR, cvt_color};
 use crate::shader::{FragmentShaderPayload, VertexShaderPayload};
@@ -33,10 +35,33 @@ pub(crate) fn get_model_matrix(rotation_angle: f64) -> M4f {
 }
 
 pub(crate) fn get_projection_matrix(eye_fov: f64, aspect_ratio: f64, z_near: f64, z_far: f64) -> M4f {
-    let mut persp2ortho: M4f = Matrix4::zeros();
+    // let mut persp2ortho: M4f = Matrix4::zeros();
     /*  Implement your code here  */
-
-    persp2ortho
+    let projection: Matrix4<f64> = Matrix4::<f64>::new(
+        z_near, 0.0, 0.0, 0.0,
+        0.0, z_near, 0.0, 0.0,
+        0.0, 0.0, z_near + z_far, -z_near * z_far,
+        0.0, 0.0, 1.0, 0.0, 
+    );
+    let radian = eye_fov / 2.0 * std::f64::consts::PI / 180.0;
+    let t = radian.tan() * -z_near;
+    let r = t * aspect_ratio;
+    let b = -t;
+    let l = -r;
+    let ortho1: Matrix4<f64> = Matrix4::<f64>::new(
+        2.0 / (r - l), 0.0, 0.0, 0.0,
+        0.0, 2.0 / (t - b), 0.0, 0.0, 
+        0.0, 0.0, 2.0 / (z_near - z_far), 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    );
+    let ortho2: Matrix4<f64> = Matrix4::<f64>::new(
+        1.0, 0.0, 0.0, -(r + l) / 2.0,
+        0.0, 1.0, 0.0, -(t + b) / 2.0,
+        0.0, 0.0, 1.0, -(z_near + z_far) / 2.0,
+        0.0, 0.0, 0.0, 1.0,
+    );
+    let ortho: Matrix4<f64> =  ortho1 * ortho2;
+    ortho * projection
 }
 
 

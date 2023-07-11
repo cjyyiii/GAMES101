@@ -10,9 +10,7 @@ extern crate opencv;
 
 use std::env;
 use nalgebra::Vector3;
-use opencv::{
-    Result,
-};
+use opencv::Result;
 use opencv::core::Vector;
 use crate::rasterizer::{Buffer, Rasterizer};
 use utils::*;
