@@ -195,9 +195,8 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let texture_color: Vector3<f64> = match &payload.texture {
         // TODO: Get the texture value at the texture coordinates of the current fragment
         // <获取材质颜色信息>
-
         None => Vector3::new(0.0, 0.0, 0.0),
-        Some(texture) => Vector3::new(0.0, 0.0, 0.0), // Do modification here
+        Some(texture) => texture.get_color(payload.tex_coords.x, payload.tex_coords.y), // Do modification here
     };
     let kd = texture_color / 255.0; // 材质颜色影响漫反射系数
     let ks = Vector3::new(0.7937, 0.7937, 0.7937);
@@ -225,6 +224,15 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     for light in lights {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
+        let v = eye_pos - point;//出射光方向
+        let l = light.position - point;//入射光源方向
+        let h = (v + l).normalize();//半程向量
+        let r = l.dot(&l);//衰减分子
+        let ambient = Vector3::<f64>::new(ka[0] * amb_light_intensity[0], ka[1] * amb_light_intensity[1], ka[2] * amb_light_intensity[2]);
+        let diffuse = Vector3::<f64>::new(kd[0] * (light.intensity / r)[0], kd[1] * (light.intensity / r)[1], kd[2] * (light.intensity / r)[2]) * (normal.normalize().dot(&l.normalize())).max(0.0);
+        let specular = Vector3::<f64>::new(ks[0] * (light.intensity / r)[0], ks[1] * (light.intensity / r)[1], ks[2] * (light.intensity / r)[2]) *  (normal.normalize().dot(&h)).max(0.0).powf(p);
+        result_color += ambient + diffuse + specular;
+
 
     }
 
