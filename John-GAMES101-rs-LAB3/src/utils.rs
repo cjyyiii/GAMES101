@@ -177,7 +177,14 @@ pub fn phong_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     for light in lights {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
-
+        let v = eye_pos - point;//出射光方向
+        let l = light.position - point;//入射光源方向
+        let h = (v + l).normalize();//半程向量
+        let r = l.dot(&l);//衰减分子
+        let ambient = Vector3::<f64>::new(ka[0] * amb_light_intensity[0], ka[1] * amb_light_intensity[1], ka[2] * amb_light_intensity[2]);
+        let diffuse = Vector3::<f64>::new(kd[0] * (light.intensity / r)[0], kd[1] * (light.intensity / r)[1], kd[2] * (light.intensity / r)[2]) * (normal.normalize().dot(&l.normalize())).max(0.0);
+        let specular = Vector3::<f64>::new(ks[0] * (light.intensity / r)[0], ks[1] * (light.intensity / r)[1], ks[2] * (light.intensity / r)[2]) *  (normal.normalize().dot(&h)).max(0.0).powf(p);
+        result_color += ambient + diffuse + specular;
 
     }
     result_color * 255.0

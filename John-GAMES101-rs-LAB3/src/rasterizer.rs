@@ -4,7 +4,7 @@ use nalgebra::{Matrix4, Vector2, Vector3, Vector4};
 use crate::shader::{FragmentShaderPayload, VertexShaderPayload};
 use crate::texture::Texture;
 use crate::triangle::Triangle;
-use crate::utils::normal_fragment_shader;
+// use crate::utils::{normal_fragment_shader, phong_fragment_shader};
 
 #[allow(dead_code)]
 pub enum Buffer {
@@ -146,20 +146,24 @@ impl Rasterizer {
                         let mut payload: FragmentShaderPayload = FragmentShaderPayload::new(&interpolate_color, &interpolate_normal.normalize(), &interpolate_texcoords, Some(Rc::new(&tex)) );
                         payload.view_pos = interpolate_shadingcoords;
 
-                        let pixel_color = normal_fragment_shader(&payload);
+                        if let Some(fragment_shader) = &self.fragment_shader {
+                        let pixel_color = fragment_shader(&payload);
                         let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
                         self.depth_buf[index] = z_interpolated;
                         Rasterizer::set_pixel(self.height, self.width, &mut self.frame_buf, &pixel, &pixel_color);
-                        } else {
+                        }
+                    } else {
                             let mut payload: FragmentShaderPayload = FragmentShaderPayload::new(&interpolate_color, &interpolate_normal.normalize(), &interpolate_texcoords, None );
                             payload.view_pos = interpolate_shadingcoords;
-    
-                            let pixel_color = normal_fragment_shader(&payload);
+
+                            if let Some(fragment_shader) = &self.fragment_shader {
+                            let pixel_color = fragment_shader(&payload);
                             let pixel: Vector3<f64> = Vector3::<f64>::new(x as f64, y as f64, z_interpolated);
                             self.depth_buf[index] = z_interpolated;
                             Rasterizer::set_pixel(self.height, self.width, &mut self.frame_buf, &pixel, &pixel_color);
-                        };
-
+                    }
+                };
+                        
                     }
                 }
             }
