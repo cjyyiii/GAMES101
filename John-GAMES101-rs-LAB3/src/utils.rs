@@ -1,9 +1,10 @@
 use std::os::raw::c_void;
 use nalgebra::{
     // Matrix3,
-    Matrix4, Vector3, Vector4};
+    Matrix4, Vector3, Vector4, Matrix3, Matrix};
 use opencv::core::{Mat, MatTraitConst};
 use opencv::imgproc::{COLOR_RGB2BGR, cvt_color};
+use opencv::stitching::Detail_MatchesInfoTraitConst;
 use crate::shader::{FragmentShaderPayload, VertexShaderPayload};
 use crate::texture::Texture;
 use crate::triangle::Triangle;
@@ -258,7 +259,7 @@ pub fn bump_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
 
     let p = 150.0;
 
-    let normal = payload.normal;
+    let mut normal = payload.normal;
     let point = payload.view_pos;
     let color = payload.color;
 
@@ -274,10 +275,21 @@ pub fn bump_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     // Vector ln = (-dU, -dV, 1)
     // Normal n = normalize(TBN * ln)
 
-    let mut result_color = Vector3::zeros();
-    result_color = normal;
+    let x = normal.x;
+    let y = normal.y;
+    let z = normal.z;
+    let t = Vector3::<f64>::new(x * y / (x * x + z * z).sqrt(), (x * x + z * z).sqrt(), z * y / (x * x + z * z).sqrt());
+    let b = normal.cross(&t);
+    let tbn = Matrix3::<f64>::new(t.x, b.x, x, t.y, b.y, y, t.z, b.z, z);
 
+    if let Some(texture) = &payload.texture {
+    let du = kh * kn * (texture.get_color(payload.tex_coords.x + 1.0 / texture.width as f64, payload.tex_coords.y).norm() - texture.get_color(payload.tex_coords.x, payload.tex_coords.y).norm());
+    let dv = kh * kn * (texture.get_color(payload.tex_coords.x, payload.tex_coords.y + 1.0 / texture.height as f64).norm() - texture.get_color(payload.tex_coords.x, payload.tex_coords.y).norm());
+    let ln = Vector3::<f64>::new(-du, -dv, 1.0);
+    normal = (tbn * ln).normalize();
+    let result_color = normal;
     result_color * 255.0
+    } else {return Vector3::zeros() * 0.0;}
 }
 
 pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
@@ -299,8 +311,8 @@ pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
 
     let p = 150.0;
 
-    let normal = payload.normal;
-    let point = payload.view_pos;
+    let mut normal = payload.normal;
+    let mut point = payload.view_pos;
     let color = payload.color;
 
     let (kh, kn) = (0.2, 0.1);
@@ -315,14 +327,35 @@ pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     // Vector ln = (-dU, -dV, 1)
     // Position p = p + kn * n * h(u,v)
     // Normal n = normalize(TBN * ln)
+    // let x = normal.x;
+    // let y = normal.y;
+    // let z = normal.z;
+    // let t = Vector3::<f64>::new(x * y / (x * x + z * z).sqrt(), (x * x + z * z).sqrt(), z * y / (x * x + z * z).sqrt());
+    // let b = normal.cross(&t);
+    // let tbn = Matrix3::<f64>::new(t.x, b.x, x, t.y, b.y, y, t.z, b.z, z);
 
-    let mut result_color = Vector3::zeros();
-    for light in lights {
-        // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
-        // components are. Then, accumulate that result on the *result_color* object.
-
-        
-    }
-
-    result_color * 255.0
+    // if let Some(texture) = &payload.texture {
+    //     let du = kh * kn * (texture.get_color(payload.tex_coords.x + 1.0 / texture.width as f64, payload.tex_coords.y).norm() - texture.get_color(payload.tex_coords.x, payload.tex_coords.y).norm());
+    //     let dv = kh * kn * (texture.get_color(payload.tex_coords.x, payload.tex_coords.y + 1.0 / texture.height as f64).norm() - texture.get_color(payload.tex_coords.x, payload.tex_coords.y).norm());
+    //     let ln = Vector3::<f64>::new(-du, -dv, 1.0);
+    // point += kn * normal * (texture.get_color(payload.tex_coords.x, payload.tex_coords.y)).norm();
+    // normal = (tbn * ln).normalize();
+    // let mut result_color = Vector3::zeros();
+    
+    // for light in lights {
+    //     // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
+    //     // components are. Then, accumulate that result on the *result_color* object.
+    //     let v = eye_pos - point;//出射光方向
+    //     let l = light.position - point;//入射光源方向
+    //     let h = (v + l).normalize();//半程向量
+    //     let r = l.dot(&l);//衰减分子
+    //     let ambient = Vector3::<f64>::new(ka[0] * amb_light_intensity[0], ka[1] * amb_light_intensity[1], ka[2] * amb_light_intensity[2]);
+    //     let diffuse = Vector3::<f64>::new(kd[0] * (light.intensity / r)[0], kd[1] * (light.intensity / r)[1], kd[2] * (light.intensity / r)[2]) * (normal.normalize().dot(&l.normalize())).max(0.0);
+    //     let specular = Vector3::<f64>::new(ks[0] * (light.intensity / r)[0], ks[1] * (light.intensity / r)[1], ks[2] * (light.intensity / r)[2]) *  (normal.normalize().dot(&h)).max(0.0).powf(p);
+    //     result_color += ambient + diffuse + specular;
+    // }
+    // result_color * 255.0
+    // } else {return Vector3::zeros() * 0.0;}
+    Vector3::zeros() * 255.0
+  
 }
