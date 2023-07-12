@@ -1,10 +1,9 @@
 use std::os::raw::c_void;
 use nalgebra::{
     // Matrix3,
-    Matrix4, Vector3, Vector4, Matrix3, Matrix};
+    Matrix4, Vector3, Vector4, Matrix3};
 use opencv::core::{Mat, MatTraitConst};
 use opencv::imgproc::{COLOR_RGB2BGR, cvt_color};
-use opencv::stitching::Detail_MatchesInfoTraitConst;
 use crate::shader::{FragmentShaderPayload, VertexShaderPayload};
 use crate::texture::Texture;
 use crate::triangle::Triangle;
@@ -170,7 +169,7 @@ pub fn phong_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     // ping point的信息
     let normal = payload.normal;
     let point = payload.view_pos;
-    let color = payload.color;
+    // let color = payload.color;
 
     let mut result_color = Vector3::zeros(); // 保存光照结果
     
@@ -197,7 +196,7 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
         // TODO: Get the texture value at the texture coordinates of the current fragment
         // <获取材质颜色信息>
         None => Vector3::new(0.0, 0.0, 0.0),
-        Some(texture) => texture.get_color(payload.tex_coords.x, payload.tex_coords.y), // Do modification here
+        Some(texture) => texture.get_color_bilinear(payload.tex_coords.x, payload.tex_coords.y), // Do modification here
     };
     let kd = texture_color / 255.0; // 材质颜色影响漫反射系数
     let ks = Vector3::new(0.7937, 0.7937, 0.7937);
@@ -216,7 +215,7 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
 
     let p = 150.0;
 
-    let color = texture_color;
+    // let color = texture_color;
     let point = payload.view_pos;
     let normal = payload.normal;
 
@@ -241,27 +240,27 @@ pub fn texture_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
 }
 
 pub fn bump_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
-    let ka = Vector3::new(0.005, 0.005, 0.005);
-    let kd = payload.color;
-    let ks = Vector3::new(0.7937, 0.7937, 0.7937);
+    // let ka = Vector3::new(0.005, 0.005, 0.005);
+    // let kd = payload.color;
+    // let ks = Vector3::new(0.7937, 0.7937, 0.7937);
 
-    let l1 = Light {
-        position: Vector3::new(20.0, 20.0, 20.0),
-        intensity: Vector3::new(500.0, 500.0, 500.0),
-    };
-    let l2 = Light {
-        position: Vector3::new(-20.0, 20.0, 0.0),
-        intensity: Vector3::new(500.0, 500.0, 500.0),
-    };
-    let lights = vec![l1, l2];
-    let amb_light_intensity = Vector3::new(10.0, 10.0, 10.0);
-    let eye_pos = Vector3::new(0.0, 0.0, 10.0);
+    // let l1 = Light {
+    //     position: Vector3::new(20.0, 20.0, 20.0),
+    //     intensity: Vector3::new(500.0, 500.0, 500.0),
+    // };
+    // let l2 = Light {
+    //     position: Vector3::new(-20.0, 20.0, 0.0),
+    //     intensity: Vector3::new(500.0, 500.0, 500.0),
+    // };
+    // let lights = vec![l1, l2];
+    // let amb_light_intensity = Vector3::new(10.0, 10.0, 10.0);
+    // let eye_pos = Vector3::new(0.0, 0.0, 10.0);
 
-    let p = 150.0;
+    // let p = 150.0;
 
     let mut normal = payload.normal;
-    let point = payload.view_pos;
-    let color = payload.color;
+    // let point = payload.view_pos;
+    // let color = payload.color;
 
     let (kh, kn) = (0.2, 0.1);
 
@@ -283,8 +282,8 @@ pub fn bump_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let tbn = Matrix3::<f64>::new(t.x, b.x, x, t.y, b.y, y, t.z, b.z, z);
 
     if let Some(texture) = &payload.texture {
-    let du = kh * kn * (texture.get_color(payload.tex_coords.x + 1.0 / texture.width as f64, payload.tex_coords.y).norm() - texture.get_color(payload.tex_coords.x, payload.tex_coords.y).norm());
-    let dv = kh * kn * (texture.get_color(payload.tex_coords.x, payload.tex_coords.y + 1.0 / texture.height as f64).norm() - texture.get_color(payload.tex_coords.x, payload.tex_coords.y).norm());
+    let du = kh * kn * (texture.get_color_bilinear(payload.tex_coords.x + 1.0 / texture.width as f64, payload.tex_coords.y).norm() - texture.get_color_bilinear(payload.tex_coords.x, payload.tex_coords.y).norm());
+    let dv = kh * kn * (texture.get_color_bilinear(payload.tex_coords.x, payload.tex_coords.y + 1.0 / texture.height as f64).norm() - texture.get_color_bilinear(payload.tex_coords.x, payload.tex_coords.y).norm());
     let ln = Vector3::<f64>::new(-du, -dv, 1.0);
     normal = (tbn * ln).normalize();
     let result_color = normal;
@@ -313,7 +312,7 @@ pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
 
     let mut normal = payload.normal;
     let mut point = payload.view_pos;
-    let color = payload.color;
+    // let color = payload.color;
 
     let (kh, kn) = (0.2, 0.1);
 
@@ -335,10 +334,10 @@ pub fn displacement_fragment_shader(payload: &FragmentShaderPayload) -> V3f {
     let tbn = Matrix3::<f64>::new(t.x, b.x, x, t.y, b.y, y, t.z, b.z, z);
 
     if let Some(texture) = &payload.texture {
-        let du = kh * kn * (texture.get_color(payload.tex_coords.x + 1.0 / texture.width as f64, payload.tex_coords.y).norm() - texture.get_color(payload.tex_coords.x, payload.tex_coords.y).norm());
-        let dv = kh * kn * (texture.get_color(payload.tex_coords.x, payload.tex_coords.y + 1.0 / texture.height as f64).norm() - texture.get_color(payload.tex_coords.x, payload.tex_coords.y).norm());
+        let du = kh * kn * (texture.get_color_bilinear(payload.tex_coords.x + 1.0 / texture.width as f64, payload.tex_coords.y).norm() - texture.get_color_bilinear(payload.tex_coords.x, payload.tex_coords.y).norm());
+        let dv = kh * kn * (texture.get_color_bilinear(payload.tex_coords.x, payload.tex_coords.y + 1.0 / texture.height as f64).norm() - texture.get_color_bilinear(payload.tex_coords.x, payload.tex_coords.y).norm());
         let ln = Vector3::<f64>::new(-du, -dv, 1.0);
-    point += kn * normal * (texture.get_color(payload.tex_coords.x, payload.tex_coords.y)).norm();
+    point += kn * normal * (texture.get_color_bilinear(payload.tex_coords.x, payload.tex_coords.y)).norm();
     normal = (tbn * ln).normalize();
     let mut result_color = Vector3::zeros();
     
